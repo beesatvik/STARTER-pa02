@@ -1,6 +1,6 @@
 // Winter'24
 // Instructor: Diba Mirza
-// Student name: 
+// Student name: Satvik Balakrishnan
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -35,6 +35,7 @@ int main(int argc, char** argv){
     }
   
     // Create an object of a STL data-structure to store all the movies
+    vector<Movie> movies;
 
     string line, movieName;
     double movieRating;
@@ -44,13 +45,24 @@ int main(int argc, char** argv){
             // to construct your Movie objects
             // cout << movieName << " has rating " << movieRating << endl;
             // insert elements into your data structure
+
+            movies.push_back({movieName, movieRating});
     }
 
     movieFile.close();
+    sort(movies.begin(), movies.end(), [](const Movie& a, const Movie& b){return a.name < b.name;});
 
-    if (argc == 2){
-            //print all the movies in ascending alphabetical order of movie names
-            return 0;
+    if (argc == 2) {
+
+        sort(movies.begin(), movies.end(), [](const Movie& a, const Movie& b){ 
+            return a.name < b.name; 
+        });
+
+        for (const auto& mov : movies){ 
+            cout << mov.name << ", " << fixed << setprecision(1) << mov.rating << endl; 
+        }
+
+        return 0;
     }
 
     ifstream prefixFile (argv[2]);
@@ -67,19 +79,116 @@ int main(int argc, char** argv){
         }
     }
 
-    //  For each prefix,
-    //  Find all movies that have that prefix and store them in an appropriate data structure
-    //  If no movie with that prefix exists print the following message
-    cout << "No movies found with prefix "<<"<replace with prefix>" << endl;
+    vector<Movie> bestMovies;
+    vector<string> bestPrefixes;
 
-    //  For each prefix,
-    //  Print the highest rated movie with that prefix if it exists.
-    cout << "Best movie with prefix " << "<replace with prefix>" << " is: " << "replace with movie name" << " with rating " << std::fixed << std::setprecision(1) << "replace with movie rating" << endl;
+    for(const string& prefix : prefixes){
+
+        auto low = lower_bound(movies.begin(), movies.end(), prefix, [](const Movie& m, const string& value){return m.name < value;});
+        string upper = prefix;
+        upper.push_back(char(127));
+
+        auto high = lower_bound(movies.begin(), movies.end(), upper, [](const Movie& m, const string& value){return m.name < value;});
+
+
+        vector<Movie> matches(low, high);
+
+        if (matches.empty()) {
+            cout << "No movies found with prefix " << prefix << endl;
+            continue;
+        }
+
+        sort(matches.begin(), matches.end(), [](const Movie& a, const Movie& b){
+
+            if (a.rating != b.rating) return a.rating > b.rating;
+            return a.name < b.name;
+
+        });
+
+        for (const auto& mov : matches){
+            cout << mov.name << ", " << fixed << setprecision(1) << mov.rating << endl;
+        }
+        cout << endl; 
+
+        
+        bestMovies.push_back(matches[0]);
+        bestPrefixes.push_back(prefix);
+
+    }
+
+    for (int i = 0; i < (int)bestMovies.size(); i++) {
+        cout << "Best movie with prefix " << bestPrefixes[i] << " is: " << bestMovies[i].name << " with rating " << fixed << setprecision(1) << bestMovies[i].rating << endl;
+    }
+
 
     return 0;
 }
 
-/* Add your run time analysis for part 3 of the assignment here as commented block*/
+/* 
+
+PART 3A:
+
+Let:
+n = number of movies
+m = number of prefixes
+k = maximum number of movies matching a prefix
+l = maximum length of a movie name
+
+For each prefix:
+
+1) We use lower_bound twice to find the matching range.
+   Each lower_bound is O(log n) comparisons.
+   Each comparison is O(l) for string comparison.
+   Thus this step is O(l log n).
+
+2) We copy the matching range of size k into a vector.
+   This is O(k).
+
+3) We sort the k matches by rating (and name if tied).
+   Sorting consists O(k log k).
+   Each comparison could involve O(l) string comparison.
+   Therefore this is O(l k log k).
+
+Therefore, for one prefix the total time is:
+
+O(l log n + l k log k)
+
+For m prefixes, the total worst-case running time is:
+
+O(m (l log n + l k log k))
+
+
+PART 3B:
+
+We store:
+
+- n movies in a vector → O(n)
+- m prefixes → O(m)
+- k matches per prefix (temporary vector) → O(k)
+- best movie per prefix → O(m)
+
+Therefore, the total space complexity is:
+
+O(n + m + k)
+
+PART 3C:
+
+This algorithm was designed primarily for low time complexity.
+
+Instead of scanning all n movies for every prefix (which would cost O(mn)),
+we sort the movies once and use binary search (lower_bound) to find
+only the relevant range of matches.
+
+The space complexity remains reasonable (O(n + m + k)),
+since we only store the dataset and temporary matches.
+
+Achieving low time complexity was more important for this assignment,
+especially since grading emphasizes efficiency.
+
+Low time complexity was harder to achieve than low space complexity,
+because naive solutions easily lead to O(mn) behavior.
+
+*/
 
 bool parseLine(string &line, string &movieName, double &movieRating) {
     int commaIndex = line.find_last_of(",");
